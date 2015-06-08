@@ -1,29 +1,44 @@
 import mechanize, yaml, re, time, sys, pycurl, hmac, urllib
 from hashlib import sha256
+from os import path
 
 WEBSTA_URL = "http://websta.me/"
 WEBSTA_HASHTAG = WEBSTA_URL + "hot"
 
-INSTAGRAM_API = "https://api.instagram.com/v1/media/"
+INSTAGRAM_API = "https://api.instagram.com/v1"
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'
 
-# Function to encode the string with the IP and ID of the picture then like it
+def get_signature(endpoint, params, secret):
+    sig = endpoint
+    for key in sorted(params.keys()):
+        sig += '|%s=%s' % (key, params[key])
+    return hmac.new(secret, sig, sha256).hexdigest()
+
 def encodeAndRequest(id):
-	c = pycurl.Curl()
-	signature = hmac.new(str(profile['CREDENTIALS']['CLIENT_SECRET']), profile['IP'], sha256).hexdigest()
-	header = '|'.join([profile['IP'], signature])
-	header = ["X-Insta-Forwarded-For: " + header]
+    ''' Function to encode the string with the IP and ID of the picture then like it. '''
+    c = pycurl.Curl()
+    '''signature = hmac.new(str(profile['CREDENTIALS']['CLIENT_SECRET']), profile['IP'], sha256).hexdigest()
+    header = '|'.join([profile['IP'], signature])
+    header = ["X-Insta-Forwarded-For: " + header]'''
+    endpoint = '/media/' + id + '/likes'
 
-	url = INSTAGRAM_API + id + "/likes"
-	c.setopt(c.URL, url)
-	c.setopt(c.POSTFIELDS, "access_token=" + str(profile['CREDENTIALS']['ACCESS_TOKEN']))
-	c.setopt(pycurl.HTTPHEADER, header)
-	c.perform()
+    post_data_dict = {
+        'access_token': profile['CREDENTIALS']['ACCESS_TOKEN'],
+    }
+    post_data_dict['sig'] = get_signature(endpoint, post_data_dict, profile['CREDENTIALS']['CLIENT_SECRET'])
+    print post_data_dict, endpoint
+    post_data = urllib.urlencode(post_data_dict)
 
-	response = str(c.getinfo(c.HTTP_CODE))
-	c.close()
-	
-	return response
+    url = INSTAGRAM_API + endpoint
+    c.setopt(c.URL, url)
+    c.setopt(c.POSTFIELDS, post_data)
+    #c.setopt(pycurl.HTTPHEADER, header)
+    c.perform()
+
+    response = str(c.getinfo(c.HTTP_CODE))
+    c.close()
+
+    return response
 
 # Function to parse the Top HashTag page and get the current top hashtags
 def getTopHashTags(br):
@@ -32,10 +47,9 @@ def getTopHashTags(br):
 	return topHashtags
 	
 # Function to read the hashtags from a users file if not wanting to parse the top 100
-def getHashtagsFromFile():
+def getHashtagsFromFile(filename):
     #your list of hashtags
     hashtags = []
-    filename = 'hashtags.txt'
     #Hashtag file input
     f = open(filename)
     #strips newline character
@@ -89,21 +103,23 @@ def like(br, hashtags):
     print "YOU LIKED " + str(likes) + " photos"
 
 if __name__ == "__main__":
+    print "================================="
+    print "            InstaBot             "
+    print "    Developed by Marc Laventure  "
+    print "================================="
+    print
 
-	print "================================="
-	print "            InstaBot             "
-	print "    Developed by Marc Laventure  "
-	print "================================="
-	print ""
+    directory = path.abspath(path.dirname(__file__))
+    profile_filename = path.join(directory, 'profile.yml')
+    profile = yaml.safe_load(open(profile_filename, "r"))
+    br = mechanize.Browser()
+    br.set_handle_robots(False)
+    br.set_handle_equiv(False)
+    br.addheaders = [('User-Agent', USER_AGENT), ('Accept', '*/*')]
 
-	profile = yaml.safe_load(open("profile.yml", "r"))	
-	br = mechanize.Browser()
-	br.set_handle_robots(False)
-	br.set_handle_equiv(False)
-	br.addheaders = [('User-Agent', USER_AGENT), ('Accept', '*/*')] 
-
-	if profile['TOP'] == 1:
-		hashtags = getTopHashTags(br)
-	else:
-		hashtags = getHashtagsFromFile()
-	like(br, hashtags)
+    if profile['TOP'] == 1:
+        hashtags = getTopHashTags(br)
+    else:
+        hashtags_filename = path.join(directory, 'hashtags.txt')
+        hashtags = getHashtagsFromFile(hashtags_filename)
+    like(br, hashtags)
