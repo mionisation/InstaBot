@@ -1,11 +1,11 @@
-import mechanize, yaml, re, time, sys, pycurl, hmac, urllib
+import yaml, re, time, sys, hmac, requests, urllib
 from hashlib import sha256
 from os import path
 
-WEBSTA_URL = "http://websta.me/"
-WEBSTA_HASHTAG = WEBSTA_URL + "hot"
+WEBSTA_URL = 'http://websta.me/'
+WEBSTA_HASHTAG = WEBSTA_URL + 'hot'
 
-INSTAGRAM_API = "https://api.instagram.com/v1"
+INSTAGRAM_API = 'https://api.instagram.com/v1'
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'
 
 def get_signature(endpoint, params, secret):
@@ -16,36 +16,20 @@ def get_signature(endpoint, params, secret):
 
 def encodeAndRequest(id):
     ''' Function to encode the string with the IP and ID of the picture then like it. '''
-    c = pycurl.Curl()
-    '''signature = hmac.new(str(profile['CREDENTIALS']['CLIENT_SECRET']), profile['IP'], sha256).hexdigest()
-    header = '|'.join([profile['IP'], signature])
-    header = ["X-Insta-Forwarded-For: " + header]'''
     endpoint = '/media/' + id + '/likes'
-
     post_data_dict = {
         'access_token': profile['CREDENTIALS']['ACCESS_TOKEN'],
     }
     post_data_dict['sig'] = get_signature(endpoint, post_data_dict, profile['CREDENTIALS']['CLIENT_SECRET'])
-    print post_data_dict, endpoint
-    post_data = urllib.urlencode(post_data_dict)
-
     url = INSTAGRAM_API + endpoint
-    c.setopt(c.URL, url)
-    c.setopt(c.POSTFIELDS, post_data)
-    #c.setopt(pycurl.HTTPHEADER, header)
-    c.perform()
+    return requests.post(url, data=post_data_dict)
 
-    response = str(c.getinfo(c.HTTP_CODE))
-    c.close()
+def getTopHashTags():
+    ''' Function to parse the Top HashTag page and get the current top hashtags. '''
+    response = requests.get(WEBSTA_HASHTAG)
+    topHashtags = re.findall('\"\>#(.*)\<\/a\>\<\/strong\>', response.text)
+    return topHashtags
 
-    return response
-
-# Function to parse the Top HashTag page and get the current top hashtags
-def getTopHashTags(br):
-	br.open(WEBSTA_HASHTAG)
-	topHashtags = re.findall('\"\>#(.*)\<\/a\>\<\/strong\>', br.response().read())
-	return topHashtags
-	
 # Function to read the hashtags from a users file if not wanting to parse the top 100
 def getHashtagsFromFile(filename):
     #your list of hashtags
@@ -56,51 +40,54 @@ def getHashtagsFromFile(filename):
     hashtags = [unicode(line.strip(), 'utf-8') for line in open(filename)]
     f.close()
     return hashtags
-	
-# Function to like hashtages
-def like(br, hashtags):
+
+def like(hashtags):
+    ''' Function to like hashtages. '''
     likes = 0
 
     for hashtag in hashtags:
         hashtaglikes = 0
         media_id = []
-        response = br.open(WEBSTA_URL +"tag/" + urllib.quote(hashtag.encode('utf-8')))
-        print u"Liking #%s" % hashtag
-        media_id = re.findall("span class=\"like_count_(.*)\"", response.read())
+        hashtag_url = WEBSTA_URL +'tag/' + urllib.quote(hashtag.encode('utf-8'))
+        response = requests.get(hashtag_url)
+        print u'Liking #%s' % hashtag
+        media_ids = re.findall('span class=\"like_count_(.*)\"', response.text)
 
-        for id in media_id:
-
-            if profile['MAXLIKES'] == "NO_MAX":
+        for media_id in media_ids:
+            if profile['MAXLIKES'] == 'NO_MAX':
                 pass
             elif likes >= int(profile['MAXLIKES']):
-                print "You have reached MAX_LIKES(" + str(profile['MAXLIKES']) + ")"
-                print u"This # is currently %s" % hashtag
+                print 'You have reached MAX_LIKES(%d)' % profile['MAXLIKES']
+                print u'This # is currently %s' % hashtag
                 sys.exit()
                 break
 
             if profile['PERHASHTAG'] == "NO_MAX":
                 pass
             elif hashtaglikes >= int(profile['PERHASHTAG']):
-                print "REACHED MAX_LIKES PER HASHTAG"
-                print "MOVING ONTO NEXT HASHTAG"
+                print 'REACHED MAX_LIKES PER HASHTAG'
+                print 'MOVING ONTO NEXT HASHTAG'
                 hashtaglikes = 0
                 break
 
-            response = encodeAndRequest(id)
-
-            if bool(re.search("200", response)):
-                print " YOU LIKED " + str(id)
+            response = encodeAndRequest(media_id)
+            if response.status_code == 200:
+                print ' YOU LIKED %s' % media_id
                 likes += 1
                 hashtaglikes += 1
                 time.sleep(profile['SLEEPTIME'])
+            elif response.status_code == 429:
+                print ' TOO MANY REQUESTS'
+                print response.text
+                return
             else:
-                print "SOMETHING WENT WRONG"
+                print 'SOMETHING WENT WRONG'
                 print response
-                print "SLEEPING FOR 60 seconds"
-                print "CURRENTLY LIKED " + str(likes) + " photos"
+                print 'SLEEPING FOR 60 seconds'
+                print 'CURRENTLY LIKED %d photos' % likes
                 time.sleep(60)
 
-    print "YOU LIKED " + str(likes) + " photos"
+    print 'YOU LIKED %d photos' % likes
 
 if __name__ == "__main__":
     print "================================="
@@ -112,14 +99,10 @@ if __name__ == "__main__":
     directory = path.abspath(path.dirname(__file__))
     profile_filename = path.join(directory, 'profile.yml')
     profile = yaml.safe_load(open(profile_filename, "r"))
-    br = mechanize.Browser()
-    br.set_handle_robots(False)
-    br.set_handle_equiv(False)
-    br.addheaders = [('User-Agent', USER_AGENT), ('Accept', '*/*')]
 
     if profile['TOP'] == 1:
-        hashtags = getTopHashTags(br)
+        hashtags = getTopHashTags()
     else:
         hashtags_filename = path.join(directory, 'hashtags.txt')
         hashtags = getHashtagsFromFile(hashtags_filename)
-    like(br, hashtags)
+    like(hashtags)
