@@ -5,9 +5,6 @@ BASE_URL = 'https://instagram.com/'
 
 class APIError(Exception):
     def __init__(self, message, error):
-        print error
-        print dir(error)
-        print error.read()
         self.message = message + ' ' + str(error)
         self.status_code = error.getcode()
 

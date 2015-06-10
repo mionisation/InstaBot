@@ -1,1 +1,4 @@
 *.pyc
+state.yml
+configuration.yml
+hashtags.txt
