@@ -8,7 +8,7 @@ Developed in Python and built with the mechanize library
 
 At first, get the source. Clone this repository:
 
-    $ git clone https://github.com/marclave/InstaBot.git
+    $ git clone https://github.com/quasiyoke/InstaBot.git
 
 ### Requirements
 
