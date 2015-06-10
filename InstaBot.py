@@ -1,4 +1,5 @@
 import yaml, re, time, sys, hmac, requests, urllib
+import instagram
 import sys
 from hashlib import sha256
 from os import path
@@ -12,22 +13,6 @@ USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Ge
 def unicode_print(s):
     ''' Handles various troubles with unicode console output. '''
     print s.encode(sys.stdout.encoding or 'ascii', 'backslashreplace')
-
-def get_signature(endpoint, params, secret):
-    sig = endpoint
-    for key in sorted(params.keys()):
-        sig += '|%s=%s' % (key, params[key])
-    return hmac.new(secret, sig, sha256).hexdigest()
-
-def like_media(id):
-    ''' Function to encode the string with the IP and ID of the picture then like it. '''
-    endpoint = '/media/' + id + '/likes'
-    post_data_dict = {
-        'access_token': profile['CREDENTIALS']['ACCESS_TOKEN'],
-    }
-    post_data_dict['sig'] = get_signature(endpoint, post_data_dict, profile['CREDENTIALS']['CLIENT_SECRET'])
-    url = INSTAGRAM_API + endpoint
-    return requests.post(url, data=post_data_dict)
 
 def get_top_hashtags():
     ''' Function to parse the Top HashTag page and get the current top hashtags. '''
@@ -46,7 +31,7 @@ def get_hashtags_from_file(filename):
     f.close()
     return hashtags
 
-def like_hashtags(hashtags):
+def like_hashtags(hashtags, client):
     ''' Function to like hashtages. '''
     likes = 0
 
@@ -75,22 +60,24 @@ def like_hashtags(hashtags):
                 hashtaglikes = 0
                 break
 
-            response = like_media(media_id)
-            if response.status_code == 200:
+            try:
+                client.like(media_id)
+            except instagram.APIError as e:
+                status_code = int(e.status_code)
+                if status_code in (403, 429):
+                    print ' TOO MANY REQUESTS'
+                    print e
+                    return
+                print 'SOMETHING WENT WRONG'
+                print e
+                print 'SLEEPING FOR 60 seconds'
+                print 'CURRENTLY LIKED %d photos' % likes
+                time.sleep(60)
+            else:
                 print ' YOU LIKED %s' % media_id
                 likes += 1
                 hashtaglikes += 1
                 time.sleep(profile['SLEEPTIME'])
-            elif response.status_code == 429:
-                print ' TOO MANY REQUESTS'
-                print response.text
-                return
-            else:
-                print 'SOMETHING WENT WRONG'
-                print response
-                print 'SLEEPING FOR 60 seconds'
-                print 'CURRENTLY LIKED %d photos' % likes
-                time.sleep(60)
 
     print 'YOU LIKED %d photos' % likes
 
@@ -105,9 +92,12 @@ if __name__ == '__main__':
     profile_filename = path.join(directory, 'profile.yml')
     profile = yaml.safe_load(open(profile_filename, "r"))
 
+    client = instagram.Client()
+    client.login(profile['CREDENTIALS']['LOGIN'], profile['CREDENTIALS']['PASSWORD'])
+
     if profile['TOP'] == 1:
         hashtags = get_top_hashtags()
     else:
         hashtags_filename = path.join(directory, 'hashtags.txt')
         hashtags = get_hashtags_from_file(hashtags_filename)
-    like_hashtags(hashtags)
+    like_hashtags(hashtags, client)
