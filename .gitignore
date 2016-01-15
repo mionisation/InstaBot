@@ -2,3 +2,4 @@
 state.yml
 configuration.yml
 hashtags.txt
+*.log

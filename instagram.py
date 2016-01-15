@@ -1,7 +1,8 @@
+import logging
 import mechanize
 import urllib
 
-BASE_URL = 'https://instagram.com/'
+BASE_URL = 'https://www.instagram.com/'
 
 class APIError(Exception):
     def __init__(self, message, error):
@@ -20,7 +21,7 @@ class Client(object):
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
             'Referer': referer,
-            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:38.0) Gecko/20100101 Firefox/38.0',
+            'User-Agent': 'Mozilla/5.0 (X11; Ubuntu; Linux i686; rv:43.0) Gecko/20100101 Firefox/43.0',
             'X-CSRFToken': self._csrf_token,
             'X-Instagram-AJAX': '1',
             'X-Requested-With': 'XMLHttpRequest',
@@ -49,7 +50,7 @@ class Client(object):
         self._ajax('web/likes/%s/like/' % media_id, data='')
 
     def login(self, login, password):
-        login_page_url = 'https://instagram.com/accounts/login/'
+        login_page_url = BASE_URL
         response = self._browser.open(login_page_url)
         self._update_csrf_token()
         login_response = self._ajax('accounts/login/ajax/', referer=login_page_url, data={
@@ -60,3 +61,4 @@ class Client(object):
 
     def _update_csrf_token(self):
         self._csrf_token = self._get_cookie('csrftoken')
+        logging.debug('csrftoken is %s', self._csrf_token)
