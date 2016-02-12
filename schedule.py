@@ -1,6 +1,7 @@
 import re
 import requests
 import urllib
+import random
 
 WEBSTA_URL = 'http://websta.me/'
 
@@ -16,7 +17,8 @@ class Schedule(object):
 
     def next(self):
         media_id_index = self._state.increment('schedule_media_id_index', 0)
-        if media_id_index >= len(self._media_ids) or media_id_index >= self._configuration['PERHASHTAG']:
+        perhashtag = random.randint(self._configuration['PERHASHTAG_LOWERBOUND'], self._configuration['PERHASHTAG_UPPERBOUND'])
+        if media_id_index >= len(self._media_ids) or media_id_index >= perhashtag:
             media_id_index = 0
             self._state['schedule_media_id_index'] = media_id_index
             self._update_media_ids(self._get_next_hashtag())

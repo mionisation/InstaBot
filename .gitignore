@@ -2,4 +2,6 @@
 state.yml
 configuration.yml
 hashtags.txt
+foodtags.txt
 *.log
+.idea/

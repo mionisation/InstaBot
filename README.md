@@ -8,7 +8,7 @@ Developed in Python and built with the mechanize library
 
 At first, get the source. Clone this repository:
 
-    $ git clone https://github.com/quasiyoke/InstaBot.git
+    $ git clone https://github.com/mionisation/InstaBot.git
 
 ### Requirements
 
@@ -24,9 +24,13 @@ Create `configuration.yml` file containing your information, e.g.:
 CREDENTIALS:
   LOGIN: "your_login"
   PASSWORD: "topsecret"
-SLEEPTIME: 5
-PERHASHTAG: 10
+SLEEPTIME_UPPERBOUND: 10
+SLEEPTIME_LOWERBOUND: 5
+PERHASHTAG_UPPERBOUND: 13
+PERHASHTAG_LOWERBOUND: 5
 ```
+
+The program will generate random numbers between the bounds for the specified attributes.
 
 The format for `hashtags.txt` file is to have each hashtag seperated by line, e.g.:
 

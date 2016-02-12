@@ -7,7 +7,10 @@ BASE_URL = 'https://www.instagram.com/'
 class APIError(Exception):
     def __init__(self, message, error):
         self.message = message + ' ' + str(error)
-        self.status_code = error.getcode()
+        try:
+            self.status_code = error.getcode()
+        except AttributeError as e:
+            print "Attribute error occured"
 
 class Client(object):
     def __init__(self):
