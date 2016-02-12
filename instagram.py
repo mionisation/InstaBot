@@ -39,7 +39,7 @@ class Client(object):
             response = self._browser.open(request)
         except Exception as e:
             e = APIError('Error during making AJAX request.', e)
-            e.status_code = e.status_code
+            #e.status_code = e.status_code
             raise e
         return response
 

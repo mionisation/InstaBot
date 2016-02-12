@@ -23,11 +23,11 @@ def like_hashtags(schedule, client, state):
         try:
             client.like(media_id)
         except instagram.APIError as e:
-            status_code = int(e.status_code)
-            if status_code in (403, 429):
-                logging.debug(' TOO MANY REQUESTS')
-                logging.debug(e)
-                return
+#            status_code = int(e.status_code)
+#            if status_code in (403, 429):
+#                logging.debug(' TOO MANY REQUESTS')
+#                logging.debug(e)
+#                return
             logging.debug('SOMETHING WENT WRONG')
             logging.debug(e)
             logging.debug('SLEEPING FOR 60 seconds')
